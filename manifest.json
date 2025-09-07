@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "obsidian-hugo-convert",
+	"name": "hugo convert",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Convert obsidian notes to hugo markdown",
+	"author": "w2tbp",
+	"authorUrl": "https://github.com/w2tbp",
+	"fundingUrl": "",
 	"isDesktopOnly": false
 }
