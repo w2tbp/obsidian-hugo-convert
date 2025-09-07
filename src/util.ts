@@ -62,8 +62,6 @@ export class HugoConvertUtil {
 			try {
 				const hugoContent = await this.convertToHugoFormat(file);
 				
-				console.log(file)
-
 				const postDir = path.join(hugoDir, file.basename);
 
 				// 确保目标目录存在
@@ -75,7 +73,6 @@ export class HugoConvertUtil {
 				// 写入转换后的内容
 				fs.writeFileSync(destPath, hugoContent, "utf8");
 				successCount++;
-				console.log(`成功写入到路径: ${destPath} `);
 
 				// 处理附件
 				const attachments = this.getAttachmentsInFile(file);
@@ -201,12 +198,31 @@ export class HugoConvertUtil {
       if (processedAttachments.has(attachment.link)) continue;
       // 提取文件名（去掉路径部分）
       const fileName = path.basename(attachment.link);
-      const escapedLink = attachment.link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      hugoContent = hugoContent.replace(new RegExp(escapedLink, 'g'), `images/${fileName}`);
+			hugoContent = this.replaceImagePath(hugoContent, attachment.link, `images/${fileName}`);
       processedAttachments.add(attachment.link);
     }
 
 		return frontmatter + hugoContent;
+	}
+
+	/**
+	 * 替换Markdown字符串中的图片路径
+	 * @param markdownString Markdown字符串
+	 * @param originalPath 原始图片路径
+	 * @param newPath 新图片路径
+	 * @returns 替换后的Markdown字符串
+	 */
+	replaceImagePath(markdownString: string, originalPath: string, newPath: string) {
+		// 将原始路径中的空格转换为%20，其他字符保持不变
+    const encodedPath = originalPath.replace(/\s/g, '%20');
+    // 转义特殊字符，确保正则表达式能正确匹配
+    const escapedOriginalPath = encodedPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // 构建正则表达式
+    const regex = new RegExp(`!\\[(.*?)\\]\\(${escapedOriginalPath}(.*?)\\)`, 'g');
+    // 执行替换
+		const encodedNewPath = newPath.replace(/\s/g, '%20');
+    const replaced = markdownString.replace(regex, `![$1](${encodedNewPath}$2)`);
+    return replaced;
 	}
 
   /**
