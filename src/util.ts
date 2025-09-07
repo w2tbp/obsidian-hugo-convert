@@ -1,4 +1,4 @@
-import { App, TFile, Notice } from "obsidian";
+import { App, TFile, Notice, FileSystemAdapter } from "obsidian";
 import * as fs from "fs";
 import * as path from "path";
 import { HugoConvertSettings } from "./setting";
@@ -30,7 +30,7 @@ export class HugoConvertUtil {
 		let hugoDir = this.settings.hugoContentDir;
 		if (!path.isAbsolute(hugoDir)) {
 			// 如果是相对路径，将其解析为相对于Vault根目录的路径
-			const vaultPath = this.app.vault.adapter.basePath;
+			const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
 			hugoDir = path.join(vaultPath, hugoDir);
 		}
 
