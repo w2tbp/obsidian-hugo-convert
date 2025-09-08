@@ -171,6 +171,10 @@ export class HugoConvertUtil {
 			modified = new Date(fileStats.mtime);
 		}
 
+		if (cache?.frontmatter?.date) {
+			created = new Date(cache.frontmatter.date);
+		}
+
 		// 格式化日期
 		const dateFormat = "YYYY-MM-DDTHH:mm:ssZ";
 		const formattedCreated = this.formatDate(created, dateFormat);
