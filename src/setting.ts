@@ -7,6 +7,7 @@ import HugoConvert from "./main";
 export interface HugoConvertSettings {
 	enableRibbon: boolean;
 	hugoContentDir: string;
+	afterExportCommands: string;
 }
 
 /**
@@ -15,6 +16,7 @@ export interface HugoConvertSettings {
 export const DEFAULT_SETTINGS: HugoConvertSettings = {
 	enableRibbon: false,
 	hugoContentDir: "./blog",
+	afterExportCommands: "",
 };
 
 /**
@@ -37,7 +39,8 @@ export class HugoConvertSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Hugo 内容目录")
 			.setDesc(
-        "Hugo 内容目录路径，可以是绝对路径或相对于 Obsidian 库根目录的相对路径。注意：导出前会清空此目录，请确保路径正确且目录中没有重要文件！")
+				"Hugo 内容目录路径，可以是绝对路径或相对于 Obsidian 库根目录的相对路径。注意：导出前会清空此目录，请确保路径正确且目录中没有重要文件！"
+			)
 			.addText((text) =>
 				text
 					.setPlaceholder("输入您的 Hugo 内容目录")
@@ -60,6 +63,26 @@ export class HugoConvertSettingTab extends PluginSettingTab {
 						// 修改设置后立即更新ribbon图标显示状态
 						this.plugin.updateRibbonIcon();
 					})
+			);
+
+		new Setting(this.containerEl)
+			.setName("导出后执行命令")
+			.setDesc(
+				"导出后执行的命令（每行一个命令）。使用 {hugoDir} 表示 Hugo 目录路径。"
+			)
+			.addTextArea(
+				(text) => (
+					(text
+						.setPlaceholder("e.g.\ncd {hugoDir}\nhugo server -D")
+						.setValue(
+							this.plugin.settings.afterExportCommands || ""
+						)
+						.onChange(async (value) => {
+							this.plugin.settings.afterExportCommands = value;
+							await this.plugin.saveSettings();
+						}).inputEl.style.height = "120px"),
+					(text.inputEl.style.width = "100%")
+				)
 			);
 	}
 }

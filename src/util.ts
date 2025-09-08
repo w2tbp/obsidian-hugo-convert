@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import { App, TFile, Notice, FileSystemAdapter } from "obsidian";
 import * as fs from "fs";
 import * as path from "path";
@@ -101,6 +102,10 @@ export class HugoConvertUtil {
 		new Notice(
 			`导出完成: 成功 ${successCount} 个, 失败 ${failureCount} 个\n输出路径: ${hugoDir}`
 		);
+
+    // 执行后续命令
+    this.executeAfterExportCommands(this.settings);
+
 	}
 
 	/**
@@ -318,6 +323,46 @@ export class HugoConvertUtil {
 				error
 			);
 			return false;
+		}
+	}
+
+	async executeAfterExportCommands(settings: HugoConvertSettings): Promise<void> {
+		console.log("Executing after export commands...");
+		if (settings.afterExportCommands === "") return;
+
+		// 将命令按行分割
+		const commandLines = settings.afterExportCommands.trim().split('\n')
+			.map(line => line.trim())
+			.filter(line => line && !line.startsWith('#')); // 忽略空行和注释
+
+		if (commandLines.length === 0) return;
+
+		let targetDir = settings.hugoContentDir;
+		// 执行每条命令
+		for (const cmd of commandLines) {
+			// 替换变量
+			const processedCmd = cmd.replace(/{hugoDir}/g, settings.hugoContentDir);
+			
+			if (processedCmd.includes('cd ')) {
+				const parts = processedCmd.split(' ');
+				const dirIndex = parts.indexOf('cd') + 1;
+				if (dirIndex > 0 && dirIndex < parts.length) {
+					targetDir = parts[dirIndex];
+					continue;
+				}
+			}
+
+			try {
+				console.log(`Executing command: ${processedCmd} in directory: ${targetDir}`);
+				// 使用 execSync 同步执行命令，也可以使用 exec 异步执行
+				const output = execSync(processedCmd, { encoding: 'utf-8', cwd: targetDir });
+				console.log(`Command output: ${output}`);
+			} catch (error) {
+				console.error(`Command failed: ${processedCmd} in directory: ${targetDir}`, error);
+				new Notice(`命令执行失败: ${processedCmd}\n${error.message}`);
+				// 可以选择抛出异常中断后续命令，或继续执行
+				throw new Error(`Failed to execute command: ${processedCmd}\n${error.message}`);
+			}
 		}
 	}
 	
