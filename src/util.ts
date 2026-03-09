@@ -166,13 +166,19 @@ export class HugoConvertUtil {
 		let created = new Date();
 		let modified = new Date();
 		const fileStats = await this.app.vault.adapter.stat(file.path);
-		if (fileStats) {
+
+		// 优先从 frontmatter 获取 createTime，否则使用文件时间
+		if (cache?.frontmatter?.createTime) {
+			created = new Date(cache.frontmatter.createTime);
+		} else if (fileStats) {
 			created = new Date(fileStats.ctime);
-			modified = new Date(fileStats.mtime);
 		}
 
-		if (cache?.frontmatter?.date) {
-			created = new Date(cache.frontmatter.date);
+		// 优先从 frontmatter 获取 updateTime，否则使用文件时间
+		if (cache?.frontmatter?.updateTime) {
+			modified = new Date(cache.frontmatter.updateTime);
+		} else if (fileStats) {
+			modified = new Date(fileStats.mtime);
 		}
 
 		// 格式化日期
