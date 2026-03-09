@@ -116,7 +116,23 @@ export class HugoConvertUtil {
 		const filesWithBlogTag: TFile[] = [];
 		const allFiles = this.app.vault.getMarkdownFiles();
 
+		// 解析排除目录列表
+		const excludeDirs = this.settings.excludeDirs
+			.split('\n')
+			.map(dir => dir.trim())
+			.filter(dir => dir.length > 0);
+
 		allFiles.forEach((file) => {
+			// 检查文件是否在排除目录中
+			const isInExcludedDir = excludeDirs.some(dir => {
+				const normalizedDir = dir.endsWith('/') ? dir : dir + '/';
+				return file.path.startsWith(normalizedDir) || file.path.startsWith(dir + '/');
+			});
+
+			if (isInExcludedDir) {
+				return; // 跳过排除目录中的文件
+			}
+
 			const cache = this.app.metadataCache.getFileCache(file);
 			if (cache && cache?.frontmatter?.tags) {
 				if (cache.frontmatter.tags.includes("blog")) {

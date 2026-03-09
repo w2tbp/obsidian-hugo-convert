@@ -8,6 +8,7 @@ export interface HugoConvertSettings {
 	enableRibbon: boolean;
 	hugoContentDir: string;
 	afterExportCommands: string;
+	excludeDirs: string;
 }
 
 /**
@@ -17,6 +18,7 @@ export const DEFAULT_SETTINGS: HugoConvertSettings = {
 	enableRibbon: false,
 	hugoContentDir: "./blog",
 	afterExportCommands: "",
+	excludeDirs: "",
 };
 
 /**
@@ -81,6 +83,26 @@ export class HugoConvertSettingTab extends PluginSettingTab {
 							this.plugin.settings.afterExportCommands = value;
 							await this.plugin.saveSettings();
 						}).inputEl.style.height = "120px"),
+					(text.inputEl.style.width = "100%")
+				)
+			);
+
+		new Setting(this.containerEl)
+			.setName("排除目录")
+			.setDesc(
+				"扫描博客文件时排除的目录（每行一个目录，使用相对于库根目录的路径，如：drafts/private、assets/templates）。"
+			)
+			.addTextArea(
+				(text) => (
+					(text
+						.setPlaceholder("e.g.\ndrafts\nprivate\narchived")
+						.setValue(
+							this.plugin.settings.excludeDirs || ""
+						)
+						.onChange(async (value) => {
+							this.plugin.settings.excludeDirs = value;
+							await this.plugin.saveSettings();
+						}).inputEl.style.height = "100px"),
 					(text.inputEl.style.width = "100%")
 				)
 			);
