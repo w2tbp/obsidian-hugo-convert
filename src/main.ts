@@ -5,6 +5,7 @@ import {
 	HugoConvertSettingTab,
 } from "./setting";
 import { HugoConvertUtil } from "./util";
+import { ConfirmModal } from "./modal";
 
 export default class HugoConvert extends Plugin {
 	settings: HugoConvertSettings;
@@ -21,14 +22,26 @@ export default class HugoConvert extends Plugin {
 		this.addCommand({
 			id: "export-blog-files-to-hugo",
 			name: "Export blog files to Hugo",
-			callback: async () => {
-				await this.util.exportBlogFilesToHugo();
+			callback: () => {
+				this.showConfirmModal();
 			},
 		});
 
 		this.addSettingTab(new HugoConvertSettingTab(this.app, this));
 
 		console.log("Hugo Exporter plugin loaded!");
+	}
+
+	showConfirmModal() {
+		const blogFileCount = this.util.getFilesWithBlogTag().length;
+		new ConfirmModal(
+			this.app,
+			this.settings,
+			blogFileCount,
+			async () => {
+				await this.util.exportBlogFilesToHugo();
+			}
+		).open();
 	}
 
 	onunload() {
@@ -63,8 +76,8 @@ export default class HugoConvert extends Plugin {
 			this.ribbonIconEl = this.addRibbonIcon(
 				"book-copy",
 				"hugo convert",
-				async (evt: MouseEvent) => {
-					await this.util.exportBlogFilesToHugo();
+				(evt: MouseEvent) => {
+					this.showConfirmModal();
 				}
 			);
 			this.ribbonIconEl.addClass("hugo-convert-ribbon-class");
