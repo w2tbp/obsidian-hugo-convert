@@ -9,6 +9,7 @@ export interface HugoConvertSettings {
 	hugoContentDir: string;
 	afterExportCommands: string;
 	excludeDirs: string;
+	siteUrl: string;
 }
 
 /**
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: HugoConvertSettings = {
 	hugoContentDir: "./blog",
 	afterExportCommands: "",
 	excludeDirs: "",
+	siteUrl: "",
 };
 
 /**
@@ -64,6 +66,21 @@ export class HugoConvertSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 						// 修改设置后立即更新ribbon图标显示状态
 						this.plugin.updateRibbonIcon();
+					})
+			);
+
+		new Setting(this.containerEl)
+			.setName("目标网站 URL")
+			.setDesc(
+				"Hugo 网站的 URL，用于转换双向链接。例如：https://w2tbp.github.io/"
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("https://example.com/")
+					.setValue(this.plugin.settings.siteUrl || "")
+					.onChange(async (value) => {
+						this.plugin.settings.siteUrl = value;
+						await this.plugin.saveSettings();
 					})
 			);
 

@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-hugo-convert",
 	"name": "Hugo convert",
-	"version": "1.2",
+	"version": "1.3",
 	"minAppVersion": "0.15.0",
 	"description": "Convert obsidian notes to hugo markdown",
 	"author": "w2tbp",

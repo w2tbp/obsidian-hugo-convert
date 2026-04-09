@@ -35,6 +35,12 @@ export class ConfirmModal extends Modal {
 			text: `Hugo 内容目录: ${this.settings.hugoContentDir}`,
 		});
 
+		if (this.settings.siteUrl) {
+			infoContainer.createEl("p", {
+				text: `目标网站 URL: ${this.settings.siteUrl}`,
+			});
+		}
+
 		const excludeDirs = this.settings.excludeDirs
 			.split("\n")
 			.map((dir) => dir.trim())

@@ -35,7 +35,7 @@ export class HugoConvertUtil {
 			hugoDir = path.join(vaultPath, hugoDir);
 		}
 
-    // 获取所有带有blog标签的文件
+		// 获取所有带有blog标签的文件
 		const blogFiles = this.getFilesWithBlogTag();
 
 		if (blogFiles.length === 0) {
@@ -43,26 +43,24 @@ export class HugoConvertUtil {
 			return;
 		}
 
-    // const confirmMessage = `即将清空目录：${hugoDir}\n此操作将删除该目录中的所有文件，是否继续？`;
-    // if (!confirm(confirmMessage)) {
-    //     new Notice("导出操作已取消");
-    //     return;
-    // }
+		// 创建 blog 文件 basename 的 Set，用于双向链接检查
+		const blogFileBasenames = new Set<string>();
+		blogFiles.forEach(file => blogFileBasenames.add(file.basename));
 
-    new Notice("开始导出文件到Hugo目录...");
+		new Notice("开始导出文件到Hugo目录...");
 
 		let successCount = 0;
 		let failureCount = 0;
 		const processedAttachments = new Set<string>();
 
-    // 清空Hugo目录
-    this.deleteDirectory(hugoDir);
+		// 清空Hugo目录
+		this.deleteDirectory(hugoDir);
 
 		// 处理每个文件
 		for (const file of blogFiles) {
 			try {
-				const hugoContent = await this.convertToHugoFormat(file);
-				
+				const hugoContent = await this.convertToHugoFormat(file, blogFileBasenames);
+
 				const postDir = path.join(hugoDir, file.basename);
 
 				// 确保目标目录存在
@@ -103,8 +101,8 @@ export class HugoConvertUtil {
 			`导出完成: 成功 ${successCount} 个, 失败 ${failureCount} 个\n输出路径: ${hugoDir}`
 		);
 
-    // 执行后续命令
-    this.executeAfterExportCommands(this.settings);
+		// 执行后续命令
+		this.executeAfterExportCommands(this.settings, hugoDir);
 
 	}
 
@@ -144,22 +142,22 @@ export class HugoConvertUtil {
 		return filesWithBlogTag;
 	}
 
-  /**
-   * 删除目录及其所有内容
-   * @param dirPath 目录路径
-   */
-  deleteDirectory(dirPath: string) {
-    if (fs.existsSync(dirPath)) {
-      fs.rmSync(dirPath, { recursive: true, force: true });
-    }
-  }
+	/**
+	 * 删除目录及其所有内容
+	 * @param dirPath 目录路径
+	 */
+	deleteDirectory(dirPath: string) {
+		if (fs.existsSync(dirPath)) {
+			fs.rmSync(dirPath, { recursive: true, force: true });
+		}
+	}
 
 	/**
 	 * 将Obsidian格式转换为Hugo格式
 	 * @param file 文件对象
 	 * @returns 转换后的内容
 	 */
-	async convertToHugoFormat(file: TFile): Promise<string> {
+	async convertToHugoFormat(file: TFile, blogFileBasenames: Set<string>): Promise<string> {
 		const content = await this.app.vault.read(file);
 
 		// 获取文件元数据
@@ -223,15 +221,20 @@ export class HugoConvertUtil {
 		let hugoContent = content.replace(/^---\s*[\s\S]*?---\s*/, "");
 
 		// 处理附件路径
-    const processedAttachments = new Set<string>();
-    const attachments = cache?.embeds || [];
-    for (const attachment of attachments) {
-      if (processedAttachments.has(attachment.link)) continue;
-      // 提取文件名（去掉路径部分）
-      const fileName = path.basename(attachment.link);
+		const processedAttachments = new Set<string>();
+		const attachments = cache?.embeds || [];
+		for (const attachment of attachments) {
+			if (processedAttachments.has(attachment.link)) continue;
+			// 提取文件名（去掉路径部分）
+			const fileName = path.basename(attachment.link);
 			hugoContent = this.replaceImagePath(hugoContent, attachment.link, `images/${fileName}`);
-      processedAttachments.add(attachment.link);
-    }
+			processedAttachments.add(attachment.link);
+		}
+
+		// 处理双向链接
+		if (this.settings.siteUrl) {
+			hugoContent = this.convertWikilinks(hugoContent, file, blogFileBasenames);
+		}
 
 		return frontmatter + hugoContent;
 	}
@@ -245,18 +248,18 @@ export class HugoConvertUtil {
 	 */
 	replaceImagePath(markdownString: string, originalPath: string, newPath: string) {
 		// 将原始路径中的空格转换为%20，其他字符保持不变
-    const encodedPath = originalPath.replace(/\s/g, '%20');
-    // 转义特殊字符，确保正则表达式能正确匹配
-    const escapedOriginalPath = encodedPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // 构建正则表达式
-    const regex = new RegExp(`!\\[(.*?)\\]\\(${escapedOriginalPath}(.*?)\\)`, 'g');
-    // 执行替换
+		const encodedPath = originalPath.replace(/\s/g, '%20');
+		// 转义特殊字符，确保正则表达式能正确匹配
+		const escapedOriginalPath = encodedPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		// 构建正则表达式
+		const regex = new RegExp(`!\\[(.*?)\\]\\(${escapedOriginalPath}(.*?)\\)`, 'g');
+		// 执行替换
 		const encodedNewPath = newPath.replace(/\s/g, '%20');
-    const replaced = markdownString.replace(regex, `![$1](${encodedNewPath}$2)`);
-    return replaced;
+		const replaced = markdownString.replace(regex, `![$1](${encodedNewPath}$2)`);
+		return replaced;
 	}
 
-  /**
+	/**
 	 * 格式化日期
 	 * @param date 日期对象
 	 * @param format 日期格式字符串
@@ -302,28 +305,28 @@ export class HugoConvertUtil {
 		}
 	}
 
-  /**
-   * 获取文件中的附件列表
-   * @param file 文件对象
-   * @returns 附件文件数组
-   */
-  getAttachmentsInFile(file: TFile): TFile[] {
-    const attachments: TFile[] = [];
-    const cache = this.app.metadataCache.getFileCache(file);
-    
-    if (cache?.embeds) {
-      cache.embeds.forEach((embed) => {
-        const embeddedFile = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path);
-        if (embeddedFile && embeddedFile.extension !== 'md') {
-          attachments.push(embeddedFile);
-        }
-      });
-    }
-    
-    return attachments;
-  }
+	/**
+	 * 获取文件中的附件列表
+	 * @param file 文件对象
+	 * @returns 附件文件数组
+	 */
+	getAttachmentsInFile(file: TFile): TFile[] {
+		const attachments: TFile[] = [];
+		const cache = this.app.metadataCache.getFileCache(file);
 
-		/**
+		if (cache?.embeds) {
+			cache.embeds.forEach((embed) => {
+				const embeddedFile = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path);
+				if (embeddedFile && embeddedFile.extension !== 'md') {
+					attachments.push(embeddedFile);
+				}
+			});
+		}
+
+		return attachments;
+	}
+
+	/**
 	 * 复制附件到目标目录
 	 * @param attachment 附件文件
 	 * @param destDir 目标目录
@@ -352,7 +355,7 @@ export class HugoConvertUtil {
 		}
 	}
 
-	async executeAfterExportCommands(settings: HugoConvertSettings): Promise<void> {
+	async executeAfterExportCommands(settings: HugoConvertSettings, hugoDir: string): Promise<void> {
 		console.log("Executing after export commands...");
 		if (settings.afterExportCommands === "") return;
 
@@ -363,33 +366,93 @@ export class HugoConvertUtil {
 
 		if (commandLines.length === 0) return;
 
-		let targetDir = settings.hugoContentDir;
+		let targetDir = hugoDir; // 使用绝对路径
 		// 执行每条命令
 		for (const cmd of commandLines) {
 			// 替换变量
-			const processedCmd = cmd.replace(/{hugoDir}/g, settings.hugoContentDir);
-			
-			if (processedCmd.includes('cd ')) {
-				const parts = processedCmd.split(' ');
-				const dirIndex = parts.indexOf('cd') + 1;
-				if (dirIndex > 0 && dirIndex < parts.length) {
-					targetDir = parts[dirIndex];
-					continue;
+			let processedCmd = cmd.replace(/{hugoDir}/g, hugoDir);
+
+			// 处理 cd 命令 - 改变工作目录
+			if (processedCmd.startsWith('cd ')) {
+				const newDir = processedCmd.substring(3).trim();
+				// 如果是相对路径，相对于当前 targetDir 解析
+				if (!path.isAbsolute(newDir)) {
+					targetDir = path.resolve(targetDir, newDir);
+				} else {
+					targetDir = newDir;
 				}
+				console.log(`Changing directory to: ${targetDir}`);
+				continue;
 			}
 
 			try {
 				console.log(`Executing command: ${processedCmd} in directory: ${targetDir}`);
-				// 使用 execSync 同步执行命令，也可以使用 exec 异步执行
-				const output = execSync(processedCmd, { encoding: 'utf-8', cwd: targetDir });
-				console.log(`Command output: ${output}`);
-			} catch (error) {
+
+				// 构建最终命令，通过 cd 切换目录，避免 cwd 选项在 Electron 中的问题
+				let finalCmd: string;
+				if (process.platform === 'win32') {
+					// Windows: 使用 cd /d 切换盘符和目录
+					finalCmd = `cd /d "${targetDir}" && ${processedCmd}`;
+				} else {
+					// Unix/Linux/Mac
+					finalCmd = `cd "${targetDir}" && ${processedCmd}`;
+				}
+
+				console.log(`finalCmd: ${finalCmd}`);
+
+				// 使用 stdio: 'inherit' 让命令输出直接显示
+				execSync(finalCmd, { stdio: 'inherit' });
+				console.log(`Command executed successfully`);
+			} catch (error: unknown) {
 				console.error(`Command failed: ${processedCmd} in directory: ${targetDir}`, error);
-				new Notice(`命令执行失败: ${processedCmd}\n${error.message}`);
-				// 可以选择抛出异常中断后续命令，或继续执行
-				throw new Error(`Failed to execute command: ${processedCmd}\n${error.message}`);
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				new Notice(`命令执行失败: ${processedCmd}\n${errorMessage}`);
+				throw new Error(`Failed to execute command: ${processedCmd}\n${errorMessage}`);
 			}
 		}
 	}
-	
+
+	/**
+	 * 转换双向链接为 Hugo 网站链接
+	 * @param content Markdown 内容
+	 * @param currentFile 当前文件
+	 * @param blogFileBasenames 所有 blog 文件的 basename Set
+	 * @returns 转换后的内容
+	 */
+	convertWikilinks(content: string, currentFile: TFile, blogFileBasenames: Set<string>): string {
+		// 匹配 [显示文本](链接.md) 格式，链接必须以 .md 结尾
+		const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+\.md)\)/g;
+
+		console.log(`[HugoConvert] 处理文件 ${currentFile.path} 的双向链接，blog文件列表:`, [...blogFileBasenames]);
+
+		return content.replace(markdownLinkRegex, (match, displayText, linkPath) => {
+			// 获取链接目标的 basename（去掉 .md 扩展名）
+			let linkBasename = linkPath;
+			if (linkBasename.endsWith('.md')) {
+				linkBasename = linkBasename.slice(0, -3);
+			}
+			// 处理路径中的目录部分，只保留文件名
+			linkBasename = path.basename(linkBasename);
+
+			console.log(`[HugoConvert] 发现链接: ${match} -> basename: ${linkBasename}`);
+
+			// 检查链接目标是否在 blog 文件列表中
+			if (blogFileBasenames.has(linkBasename)) {
+				// 构建 Hugo 网站链接
+				const siteUrl = this.settings.siteUrl.endsWith('/')
+					? this.settings.siteUrl
+					: this.settings.siteUrl + '/';
+				const hugoLink = `${siteUrl}${linkBasename}`;
+
+				console.log(`[HugoConvert] 转换链接: ${match} -> [${displayText}](${hugoLink})`);
+				return `[${displayText}](${hugoLink})`;
+			} else {
+				// 链接目标不在 blog 文件列表中，输出警告日志
+				console.warn(`[HugoConvert] 双向链接 "${match}" 的目标 "${linkBasename}" 未被 blog 标签标记，文件: ${currentFile.path}`);
+				// 保持原样，不转换
+				return match;
+			}
+		});
+	}
+
 }
