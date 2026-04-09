@@ -1,4 +1,3 @@
-import { execSync } from 'child_process';
 import { App, TFile, Notice, FileSystemAdapter } from "obsidian";
 import * as fs from "fs";
 import * as path from "path";
@@ -100,9 +99,6 @@ export class HugoConvertUtil {
 		new Notice(
 			`导出完成: 成功 ${successCount} 个, 失败 ${failureCount} 个\n输出路径: ${hugoDir}`
 		);
-
-		// 执行后续命令
-		this.executeAfterExportCommands(this.settings, hugoDir);
 
 	}
 
@@ -352,63 +348,6 @@ export class HugoConvertUtil {
 				error
 			);
 			return false;
-		}
-	}
-
-	async executeAfterExportCommands(settings: HugoConvertSettings, hugoDir: string): Promise<void> {
-		console.log("Executing after export commands...");
-		if (settings.afterExportCommands === "") return;
-
-		// 将命令按行分割
-		const commandLines = settings.afterExportCommands.trim().split('\n')
-			.map(line => line.trim())
-			.filter(line => line && !line.startsWith('#')); // 忽略空行和注释
-
-		if (commandLines.length === 0) return;
-
-		let targetDir = hugoDir; // 使用绝对路径
-		// 执行每条命令
-		for (const cmd of commandLines) {
-			// 替换变量
-			let processedCmd = cmd.replace(/{hugoDir}/g, hugoDir);
-
-			// 处理 cd 命令 - 改变工作目录
-			if (processedCmd.startsWith('cd ')) {
-				const newDir = processedCmd.substring(3).trim();
-				// 如果是相对路径，相对于当前 targetDir 解析
-				if (!path.isAbsolute(newDir)) {
-					targetDir = path.resolve(targetDir, newDir);
-				} else {
-					targetDir = newDir;
-				}
-				console.log(`Changing directory to: ${targetDir}`);
-				continue;
-			}
-
-			try {
-				console.log(`Executing command: ${processedCmd} in directory: ${targetDir}`);
-
-				// 构建最终命令，通过 cd 切换目录，避免 cwd 选项在 Electron 中的问题
-				let finalCmd: string;
-				if (process.platform === 'win32') {
-					// Windows: 使用 cd /d 切换盘符和目录
-					finalCmd = `cd /d "${targetDir}" && ${processedCmd}`;
-				} else {
-					// Unix/Linux/Mac
-					finalCmd = `cd "${targetDir}" && ${processedCmd}`;
-				}
-
-				console.log(`finalCmd: ${finalCmd}`);
-
-				// 使用 stdio: 'inherit' 让命令输出直接显示
-				execSync(finalCmd, { stdio: 'inherit' });
-				console.log(`Command executed successfully`);
-			} catch (error: unknown) {
-				console.error(`Command failed: ${processedCmd} in directory: ${targetDir}`, error);
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				new Notice(`命令执行失败: ${processedCmd}\n${errorMessage}`);
-				throw new Error(`Failed to execute command: ${processedCmd}\n${errorMessage}`);
-			}
 		}
 	}
 

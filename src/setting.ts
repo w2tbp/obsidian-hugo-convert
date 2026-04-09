@@ -7,7 +7,6 @@ import HugoConvert from "./main";
 export interface HugoConvertSettings {
 	enableRibbon: boolean;
 	hugoContentDir: string;
-	afterExportCommands: string;
 	excludeDirs: string;
 	siteUrl: string;
 }
@@ -18,7 +17,6 @@ export interface HugoConvertSettings {
 export const DEFAULT_SETTINGS: HugoConvertSettings = {
 	enableRibbon: false,
 	hugoContentDir: "./blog",
-	afterExportCommands: "",
 	excludeDirs: "",
 	siteUrl: "",
 };
@@ -82,26 +80,6 @@ export class HugoConvertSettingTab extends PluginSettingTab {
 						this.plugin.settings.siteUrl = value;
 						await this.plugin.saveSettings();
 					})
-			);
-
-		new Setting(this.containerEl)
-			.setName("导出后执行命令")
-			.setDesc(
-				"导出后执行的命令（每行一个命令）。使用 {hugoDir} 表示 Hugo 目录路径。"
-			)
-			.addTextArea(
-				(text) => (
-					(text
-						.setPlaceholder("e.g.\ncd {hugoDir}\nhugo server -D")
-						.setValue(
-							this.plugin.settings.afterExportCommands || ""
-						)
-						.onChange(async (value) => {
-							this.plugin.settings.afterExportCommands = value;
-							await this.plugin.saveSettings();
-						}).inputEl.style.height = "120px"),
-					(text.inputEl.style.width = "100%")
-				)
 			);
 
 		new Setting(this.containerEl)

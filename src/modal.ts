@@ -56,18 +56,6 @@ export class ConfirmModal extends Modal {
 			});
 		}
 
-		if (this.settings.afterExportCommands) {
-			const cmdContainer = infoContainer.createDiv();
-			cmdContainer.createEl("p", { text: "导出后执行命令:" });
-			const cmdPre = cmdContainer.createEl("pre");
-			cmdPre.style.backgroundColor = "var(--background-primary-alt)";
-			cmdPre.style.padding = "10px";
-			cmdPre.style.borderRadius = "5px";
-			cmdPre.style.whiteSpace = "pre-wrap";
-			cmdPre.style.wordBreak = "break-all";
-			cmdPre.setText(this.settings.afterExportCommands);
-		}
-
 		// 警告信息
 		const warningEl = contentEl.createEl("p", {
 			text: "⚠️ 注意: 导出前会清空目标目录，请确认配置正确！",
