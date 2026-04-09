@@ -377,11 +377,12 @@ export class HugoConvertUtil {
 
 			// 检查链接目标是否在 blog 文件列表中
 			if (blogFileBasenames.has(linkBasename)) {
-				// 构建 Hugo 网站链接
+				// 构建 Hugo 网站链接，使用 slugify 转换文件名
 				const siteUrl = this.settings.siteUrl.endsWith('/')
 					? this.settings.siteUrl
 					: this.settings.siteUrl + '/';
-				const hugoLink = `${siteUrl}${linkBasename}`;
+				const slugifiedName = this.slugify(linkBasename);
+				const hugoLink = `${siteUrl}${slugifiedName}`;
 
 				console.log(`[HugoConvert] 转换链接: ${match} -> [${displayText}](${hugoLink})`);
 				return `[${displayText}](${hugoLink})`;
@@ -392,6 +393,38 @@ export class HugoConvertUtil {
 				return match;
 			}
 		});
+	}
+
+	/**
+	 * 将字符串转换为 Hugo 兼容的 URL slug 格式
+	 * 模仿 Hugo 的 urlize 函数行为
+	 * @param str 输入字符串
+	 * @returns slug 化的字符串
+	 */
+	slugify(str: string): string {
+		// 1. 转换为小写（仅影响英文字母）
+		let result = str.toLowerCase();
+
+		// 2. 移除中文标点符号
+		// 中文标点：、，。！？；：""''《》【】（）《》〈〉「」『』〔〕｛｝
+		const chinesePunctuation = /[、，。！？；：""''《》【】（）《》〈〉「」『』〔〕｛｝]/g;
+		result = result.replace(chinesePunctuation, '');
+
+		// 3. 移除英文标点符号（保留连字符和点号）
+		// 移除: ! " # $ % & ' ( ) * + , / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
+		const englishPunctuation = /[!"#$%&'()*+,/:;<=>?@[\\\]^_`{|}~]/g;
+		result = result.replace(englishPunctuation, '');
+
+		// 4. 空格替换为连字符
+		result = result.replace(/\s+/g, '-');
+
+		// 5. 多个连续连字符合并为一个
+		result = result.replace(/-+/g, '-');
+
+		// 6. 移除首尾的连字符
+		result = result.replace(/^-+|-+$/g, '');
+
+		return result;
 	}
 
 }
